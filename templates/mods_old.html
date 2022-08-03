@@ -1,0 +1,64 @@
+<a href="/"><button type="button">首页</button></a>&nbsp;&nbsp;&nbsp;&nbsp;<button type="button"
+    onclick="location.reload();">刷新</button>
+<br /><br />
+<b>{{content.module}}</b>
+<br /><br />
+<input id="input_id" type="text" name="input_id" size="20"><button type="button" title="add"
+    onclick="add_id(this);">添加id</button>
+<br /><br />
+
+{% if content.success %}
+
+<table>
+
+    {% for k, v in content.novel_list.items() %}
+
+    <tr>
+        <th>{{k}}</th>
+        <th>{{v.name}}</th>
+        <th>
+            <button type="button" title="refresh" value="{{k}}" onclick="proceed(this);" {% if (v.state==2 or
+                v.state==4) %} disabled="disabled" {% endif %}>更新缓存</button>
+        </th>
+        <th>
+            <button type="button" title="generate" value="{{k}}" onclick="proceed(this);" {% if (v.state !=3 and v.state
+                !=5) %} disabled="disabled" {% endif %}>生成epub</button>
+        </th>
+        <th>
+            <a href="{{['/download/', content.module, '/', k] | join}}" download="{{[v.dir] | join}}"><button
+                    type="button" title="download" value="{{k}}" {% if (v.state !=5) %} disabled="disabled" {% endif
+                    %}>下载epub</button></a>
+        </th>
+    </tr>
+
+    {% endfor %}
+
+    <table />
+
+    {% else %}
+
+    <b>获取失败</b>
+
+    {% endif %}
+
+    <script>
+        function add_id(btn) {
+            var text = document.getElementById("input_id");
+            var httpRequest = new XMLHttpRequest();	//第一步：创建需要的对象
+            httpRequest.open('POST', location, true);	//第二步：打开连接
+            /***发送json格式文件必须设置请求头 ；如下 - */
+            httpRequest.setRequestHeader("Content-type", "application/json; charset=utf-8");	// 设置请求头,注：post方式必须设置请求头（在建立连接后设置请求头）
+            var obj = { "action": String(btn.title), "id": String(text.value) };
+            httpRequest.send(JSON.stringify(obj));//发送请求 将json写入send中
+            setTimeout("location.reload()", 500)
+        }
+        function proceed(btn) {
+            var httpRequest = new XMLHttpRequest();	//第一步：创建需要的对象
+            httpRequest.open('POST', location, true);	//第二步：打开连接
+            /***发送json格式文件必须设置请求头 ；如下 - */
+            httpRequest.setRequestHeader("Content-type", "application/json; charset=utf-8");	// 设置请求头,注：post方式必须设置请求头（在建立连接后设置请求头）
+            var obj = { "action": String(btn.title), "id": String(btn.value) };
+            httpRequest.send(JSON.stringify(obj));//发送请求 将json写入send中
+            setTimeout("location.reload()", 500)
+        }
+    </script>

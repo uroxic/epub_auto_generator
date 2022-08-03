@@ -1,0 +1,2 @@
+protoc -I="C:\Users\uroxi\Documents\Python\protobuf" --python_out="../../" "C:\Users\uroxi\Documents\Python\protobuf\NovelDetailResponse.proto"
+protoc -I="C:\Users\uroxi\Documents\Python\protobuf" --python_out="../../" "C:\Users\uroxi\Documents\Python\protobuf\NovelChapterResponse.proto"

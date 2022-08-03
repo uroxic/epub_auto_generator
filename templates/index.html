@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="zxx">
+
+<head>
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <link rel="stylesheet" href="static/css/bootstrap.min.css">
+
+    <link rel="stylesheet" href="static/css/animate.min.css">
+
+    <link rel="stylesheet" href="static/css/owl.carousel.min.css">
+
+    <link rel="stylesheet" href="static/css/fontawesome.min.css">
+
+    <link rel="stylesheet" href="static/css/odometer.css">
+
+    <link rel="stylesheet" href="static/css/magnific-popup.min.css">
+
+    <link rel="stylesheet" href="static/css/slick.min.css">
+
+    <link rel="stylesheet" href="static/css/style.css">
+
+    <link rel="stylesheet" href="static/css/responsive.css">
+    <title>Epub Auto Generator</title>
+</head>
+
+<body data-spy="scroll" data-offset="120">
+
+    <div class="preloader">
+        <div class="preloader">
+            <span></span>
+            <span></span>
+        </div>
+    </div>
+
+
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <div class="logo">
+                <a href="/">
+                    <h3>EAG</h3>
+                </a>
+            </div>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false"
+                aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a href="/" class="nav-link">
+                            首页
+                        </a>
+                    </li>
+                </ul>
+                <div class="others-option">
+                    <div class="d-flex align-items-center">
+                        <div class="option-item">
+                            <button type="button" class="default-btn" onclick="location.reload();">
+                                刷新
+                                <span></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+
+    <div id="home" class="main-banner">
+        <div class="d-table">
+            <div class="d-table-cell">
+                <div class="container-fluid">
+                    <div class="row align-items-center">
+                        <div class="col-lg-6">
+                            <div class="banner-content">
+                                <h1>Epub Auto Generator</h1>
+                                <p>根据所给id爬取并自动生成epub的小工具，断网看小说总是好的</p>
+                                <div class="banner-holder">
+                                    <img src="static/image/cf-icon-cloud.png" alt="image">
+                                    <img src="static/image/cf-icon-error.png" alt="image">
+                                    <img src="static/image/cf-icon-server.png" alt="image">
+                                    <img src="static/image/cf-icon-ok.png" alt="image">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="banner-image">
+                                <img src="static/picture/mobile.png" alt="image">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="default-shape">
+            <div class="shape-1">
+                <img src="static/picture/1.png" alt="image">
+            </div>
+            <div class="shape-2 rotateme">
+                <img src="static/picture/2.png" alt="image">
+            </div>
+            <div class="shape-3">
+                <img src="static/picture/3.svg" alt="image">
+            </div>
+            <div class="shape-4">
+                <img src="static/picture/4.svg" alt="image">
+            </div>
+            <div class="shape-5">
+                <img src="static/picture/5.png" alt="image">
+            </div>
+        </div>
+    </div>
+
+
+    <section id="features" class="features-area pb-70">
+        <div class="container">
+            <div class="section-title">
+                <h3>已装模块</h3>
+                <div class="bar"></div>
+                <p>下列为已经安装的模块</p>
+            </div>
+            <div class="row">
+                {% for i in content %}
+                <div class="col-lg-4 col-md-6">
+                    <a href="/mods/{{i}}/1">
+                        <div class="single-features">
+                            <div class="icon">
+                                <i class="fa fa-desktop"></i>
+                            </div>
+                            <h3>{{i}}</h3>
+                        </div>
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="default-shape">
+            <div class="shape-1">
+                <img src="static/picture/1.png" alt="image">
+            </div>
+            <div class="shape-2 rotateme">
+                <img src="static/picture/2.png" alt="image">
+            </div>
+            <div class="shape-3">
+                <img src="static/picture/3.svg" alt="image">
+            </div>
+            <div class="shape-4">
+                <img src="static/picture/4.svg" alt="image">
+            </div>
+            <div class="shape-5">
+                <img src="static/picture/5.png" alt="image">
+            </div>
+        </div>
+    </section>
+
+
+    <section class="footer-area pt-100 pb-70">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-3 col-sm-6">
+                    <div class="single-footer-widget">
+                        <a href="" class="logo">
+                            <h2>EAG</h2>
+                        </a>
+                        <p>Epub Auto Generator</p>
+                        <ul class="social-list">
+                            <li>
+                                <a href="" target="_blank">
+                                    <i class="fab fa-facebook-f"></i>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="" target="_blank">
+                                    <i class="fab fa-twitter"></i>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="" target="_blank">
+                                    <i class="fab fa-linkedin-in"></i>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="" target="_blank">
+                                    <i class="fab fa-instagram"></i>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <div class="copy-right">
+        <div class="container">
+            <div class="copy-right-content">
+                <p>Copyright &copy; 2022.UROXIC All rights reserved.</p>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="go-top">
+        <i class="fa fa-chevron-up"></i>
+        <i class="fa fa-chevron-up"></i>
+    </div>
+
+
+    <script data-cfasync="false" src="static/js/email-decode.min.js"></script>
+    <script src="static/js/jquery-3.5.1.min.js"></script>
+
+    <script src="static/js/popper.min.js"></script>
+
+    <script src="static/js/bootstrap.min.js"></script>
+
+    <script src="static/js/owl.carousel.min.js"></script>
+
+    <script src="static/js/jquery.appear.js"></script>
+
+    <script src="static/js/odometer.min.js"></script>
+
+    <script src="static/js/slick.min.js"></script>
+
+    <script src="static/js/particles.min.js"></script>
+
+    <script src="static/js/jquery.ripples-min.js"></script>
+
+    <script src="static/js/jquery.magnific-popup.min.js"></script>
+
+    <script src="static/js/wow.min.js"></script>
+
+    <script src="static/js/jquery.ajaxchimp.min.js"></script>
+
+    <script src="static/js/form-validator.min.js"></script>
+
+    <script src="static/js/contact-form-script.js"></script>
+
+    <script src="static/js/main.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,12 @@
+aiofiles
+aiohttp
+ebooklib
+retrying
+google
+protobuf
+beautifulsoup4
+pycryptodome
+jinja2
+sanic
+wheel
+lxml
