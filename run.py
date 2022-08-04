@@ -110,6 +110,10 @@ async def add_novel(fetcher, id):
                     await afp.write(json_string)
             else:
                 novel_list[id]['state'] = 1
+                async with aiofiles.open(jsondir, 'wb') as afp:
+                    json_string = json.dumps(
+                        novel_list, ensure_ascii=False).encode('utf8')
+                    await afp.write(json_string)
         else:
             novel_list = {}
             content = await fetcher.get_detail(id)
