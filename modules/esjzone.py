@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import re
+import urllib.parse
 from multiprocessing import Pipe
 
 import aiofiles
@@ -14,25 +15,31 @@ from retrying import retry
 
 class fetcher(object):
     def __init__(self, proxy=None):
-        self.save_dir = "./wenku8/web"
+        self.save_dir = "./esjzone/web"
         self.proxy = proxy
         self.header = [('User-Agent',
                         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36')]
+        self.cookie = {}
+        self.email = ""
+        self.password = ""
         self.background_tasks = set()
 
-        # https://www.wenku8.net/book/{novel_id}.htm
-        self.detail_api = "https://www.wenku8.net/book/"
+        # https://www.esjzone.cc/detail/{novel_id}.html
+        self.detail_api = "https://www.esjzone.cc/detail/"
 
-        # https://www.wenku8.net/novel/{novel_id // 1000}/{novel_id}/index.htm
-        self.chapter_api = "https://www.wenku8.net/novel/"
+        # https://www.esjzone.cc/detail/{novel_id}.html
+        self.chapter_api = "https://www.esjzone.cc/detail/"
 
-        # https://www.wenku8.net/novel/{novel_id // 1000}/{novel_id}/{chapter_id}.htm
-        self.content_api = "https://www.wenku8.net/novel/"
+        # https://www.esjzone.cc/forum/{novel_id}/{chapter_id}.html
+        self.content_api = "https://www.esjzone.cc/forum/"
+
+        # https://www.esjzone.cc/inc/mem_login.php
+        self.login_api = "https://www.esjzone.cc/inc/mem_login.php"
 
     @retry(stop_max_attempt_number=3, wait_random_min=200, wait_random_max=600)
     async def download_img(self, url, dir):
         async with aiohttp.ClientSession(headers=self.header) as session:
-            async with session.get(url, proxy=self.proxy) as response:
+            async with session.get(url, cookies=self.cookie, proxy=self.proxy) as response:
                 async with aiofiles.open(dir, 'wb') as afp:
                     await afp.write(await response.content.read())
         return
@@ -49,52 +56,83 @@ class fetcher(object):
         return tag.has_attr('width') or tag.has_attr('height') or tag.has_attr('style')
 
     @retry(stop_max_attempt_number=3, wait_random_min=200, wait_random_max=600)
-    async def get_detail(self, novel_id):
+    async def login(self):
+        payload = "email=" + \
+            urllib.parse.quote(self.email) + "&pwd=" + \
+            urllib.parse.quote(self.password) + "&remember_me=on"
+        login_header = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36',
+                        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                        'Content-Length': str(len(payload)),
+                        'Host': 'www.esjzone.cc'}
+        async with aiohttp.ClientSession(headers=login_header) as session:
+            async with session.post(self.login_api, data=payload, proxy=self.proxy) as response:
+                for i in session.cookie_jar:
+                    self.cookie[i.key] = i.value
+
+        return (await self.check_login())
+
+    @retry(stop_max_attempt_number=3, wait_random_min=200, wait_random_max=600)
+    async def check_login(self):
         async with aiohttp.ClientSession(headers=self.header) as session:
-            async with session.get(self.detail_api + str(novel_id) + ".htm", proxy=self.proxy) as response:
-                result = zhconv.convert((await response.content.read()).decode('gbk'), 'zh-cn')
+            async with session.get("https://www.esjzone.cc/my/profile", cookies=self.cookie, proxy=self.proxy) as response:
+                result = (await response.content.read()).decode('utf8')
+                if (result.find("ESJ Zone") != -1):
+                    return True
+
+        return False
+
+    @retry(stop_max_attempt_number=3, wait_random_min=200, wait_random_max=600)
+    async def get_detail(self, novel_id):
+        if ((await self.check_login()) == False):
+            await self.login()
+        async with aiohttp.ClientSession(headers=self.header) as session:
+            async with session.get(self.detail_api + str(novel_id) + ".html", cookies=self.cookie, proxy=self.proxy) as response:
+                result = zhconv.convert((await response.content.read()).decode('utf8'), 'zh-cn')
         parser = etree.HTMLParser(encoding='utf-8')
         html = etree.fromstring(result, parser=parser)
+        description = []
+        for i in html.xpath("/html/body/div[3]/section/div/div[1]/div[2]/div/div/div/p"):
+            description.append(i.text)
+            description.append('\n')
         detail = {}
         detail['name'] = html.xpath(
-            "/html/body/div[5]/div/div/div[1]/table[1]/tr[1]/td/table/tr/td[1]/span/b")[0].text
-        detail['intro'] = "<br/>".join(html.xpath(
-            "/html/body/div[5]/div/div/div[1]/table[2]/tr/td[2]/span[6]/text()")).replace(u'\u3000', u' ').replace('\r', '\n')
+            "/html/body/div[3]/section/div/div[1]/div[1]/div[2]/h2")[0].text.replace(u'\u3000', u' ')
+        detail['intro'] = "<br/>".join(description).replace(
+            u'\u3000', u' ').replace('\r', '\n')
         detail['author'] = html.xpath(
-            "/html/body/div[5]/div/div/div[1]/table[1]/tr[2]/td[2]")[0].text[5:]
+            "/html/body/div[3]/section/div/div[1]/div[1]/div[2]/ul/li[2]/a")[0].text.replace(u'\u3000', u' ')
         detail['novel_id'] = int(novel_id)
         detail['cover'] = html.xpath(
-            "/html/body/div[5]/div/div/div[1]/table[2]/tr/td[1]/img")[0].get('src')
+            "/html/body/div[3]/section/div/div[1]/div[1]/div[1]/div[1]/a/img")[0].get('src')
 
         return detail
 
     @retry(stop_max_attempt_number=3, wait_random_min=200, wait_random_max=600)
     async def get_chapter(self, novel_id):
+        if ((await self.check_login()) == False):
+            await self.login()
         async with aiohttp.ClientSession(headers=self.header) as session:
-            async with session.get(self.chapter_api + str(int(novel_id) // 1000) + '/' + str(novel_id) + "/index.htm", proxy=self.proxy) as response:
-                result = zhconv.convert((await response.content.read()).decode('gbk'), 'zh-cn')
+            async with session.get(self.chapter_api + str(novel_id) + ".html", cookies=self.cookie, proxy=self.proxy) as response:
+                result = zhconv.convert((await response.content.read()).decode('utf8'), 'zh-cn')
         parser = etree.HTMLParser(encoding='utf-8')
         html = etree.fromstring(result, parser=parser)
-        temp = html.xpath("//td[@class='vcss'] | //td[@class='ccss']/node()")
-        while(1):
-            try:
-                temp.remove('\xa0')
-            except Exception as e:
-                print(e)
-                break
+        temp = html.xpath(
+            "//div[@id='chapterList']//p[@class='non'] | //div[@id='chapterList']//a[@target='_blank']")
         volume = []
         temp1 = {}
+        count = 0
         for i in temp:
-            if (i.get('class') == 'vcss'):
+            if (i.tag == 'p'):
                 if (len(temp1) != 0):
                     volume.append(temp1)
                     temp1 = {}
                 temp1['name'] = i.text
-                temp1['volume_id'] = i.get('vid')
+                temp1['volume_id'] = count
+                count += 1
                 temp1['chapter'] = []
             else:
                 temp1['chapter'].append(
-                    {"name": i.text, "chapter_id": int(i.get('href')[:-4])})
+                    {"name": i.get('data-title'), "chapter_id": int((urllib.parse.urlparse(i.get('href')).path).split('/')[-1][:-5])})
         if (len(temp1) != 0):
             volume.append(temp1)
 
@@ -102,16 +140,18 @@ class fetcher(object):
 
     @retry(stop_max_attempt_number=3, wait_random_min=200, wait_random_max=600)
     async def get_content(self, novel_id, volume_id, chapter_id):
+        if ((await self.check_login()) == False):
+            await self.login()
         async with aiohttp.ClientSession(headers=self.header) as session:
-            async with session.get(self.content_api + str(int(novel_id) // 1000) + '/' + str(novel_id) + '/' + str(chapter_id) + ".htm", proxy=self.proxy) as response:
-                result = zhconv.convert((await response.content.read()).decode('gbk'), 'zh-cn')
+            async with session.get(self.content_api + str(novel_id) + '/' + str(chapter_id) + ".html", cookies=self.cookie, proxy=self.proxy) as response:
+                result = zhconv.convert((await response.content.read()).decode('utf8'), 'zh-cn')
         soup = BeautifulSoup(result, features='lxml')
-        content = soup.find_all(name='div', id='content')
-        temp = soup.find_all(name='div', id='title')[0].text
+        content = soup.find_all(name='div', class_='forum-content mt-3')
+        temp = soup.find_all(name='h2')[0].text
         temp = "<h2>" + temp + "</h2>"
-        content = "".join(
-            list(map(str, content[0].contents[2:-2]))).replace('\r', '\n').replace('\n', '').replace('<br/><br/><br/>', '<br/><br/>')
-        content = (temp + '<br/><br/>' + content).encode('utf8')
+        content = "<br/>".join(
+            list(map(str, content[0].contents))).replace('<p>', '').replace('</p>', '').replace('\r', '\n').replace('\n', '').replace('<br/><br/><br/>', '<br/><br/>')
+        content = (temp + content).encode('utf8')
         soup = BeautifulSoup(content, features='lxml')
         tags = soup.find_all(self.tag_del)
         if(len(tags) != 0):
@@ -125,10 +165,6 @@ class fetcher(object):
 
     def localize_content(self, content, dir):
         soup = BeautifulSoup(content, features='lxml')
-        imgs = soup.find_all(name='div', class_='divimage')
-        if(len(imgs) != 0):
-            for i in imgs:
-                i.replace_with(i.contents[0].contents[0])
         imgs = soup.find_all('img')
         if(len(imgs) != 0):
             for i in imgs:
@@ -148,6 +184,8 @@ class fetcher(object):
         return content
 
     async def get_novel(self, novel_id, t, lazy=True):
+        if ((await self.check_login()) == False):
+            await self.login()
         try:
             info = await self.get_detail(novel_id)
             volume = await self.get_chapter(novel_id)
@@ -185,10 +223,9 @@ class fetcher(object):
                 print(e)
                 pass
             t.send({'action': 'finish', 'id': novel_id,
-                   'module': 'wenku8', 'state': 3})
+                   'module': 'esjzone', 'state': 3})
         except Exception as e:
             print(e)
             t.send({'action': 'finish', 'id': novel_id,
-                   'module': 'wenku8', 'state': 1})
+                   'module': 'esjzone', 'state': 1})
             return
-        return

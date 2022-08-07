@@ -1,3 +1,4 @@
+wheel
 aiofiles
 aiohttp
 ebooklib
@@ -8,5 +9,5 @@ beautifulsoup4
 pycryptodome
 jinja2
 sanic
-wheel
+zhconv
 lxml

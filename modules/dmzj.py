@@ -9,6 +9,7 @@ from multiprocessing import Pipe
 
 import aiofiles
 import aiohttp
+import zhconv
 from bs4 import BeautifulSoup
 from Crypto.Cipher import PKCS1_v1_5
 from Crypto.PublicKey import RSA
@@ -24,7 +25,7 @@ class fetcher(object):
         self.save_dir = "./dmzj/web"
         self.proxy = proxy
         self.header = [('User-Agent',
-                        'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/36.0.1941.0 Safari/537.36')]
+                        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36')]
         self.background_tasks = set()
 
         # https://nnv4api.muwai.com/novel/detail/{novel_id}
@@ -149,6 +150,10 @@ class fetcher(object):
         imgs = soup.find_all('img')
         if(len(imgs) != 0):
             for i in imgs:
+                temp = list(i.attrs.keys())
+                for j in temp:
+                    if(j != 'src' and j != 'class'):
+                        del(i[j])
                 url = str(i['src'])
                 img_name = list(url.split('/'))[-1]
                 self.check_dir(dir + '/img')

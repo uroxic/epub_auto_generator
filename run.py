@@ -8,7 +8,7 @@ import aiofiles
 import server
 from make_epub import *
 
-modules = ['dmzj', 'wenku8']
+modules = ['dmzj', 'esjzone', 'wenku8']
 
 
 def run_server(pipe_dict, epub_pipe):
