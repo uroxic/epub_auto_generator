@@ -110,7 +110,9 @@ class fetcher(object):
         temp = soup.find_all(name='div', id='title')[0].text
         temp = "<h2>" + temp + "</h2>"
         content = "".join(
-            list(map(str, content[0].contents[2:-2]))).replace('\r', '\n').replace('\n', '').replace('<br/><br/><br/>', '<br/><br/>')
+            list(map(str, content[0].contents[2:-2]))).replace('\r', '\n').replace('\n', '')
+        while(content.find('<br/><br/><br/>') != -1):
+            content = content.replace('<br/><br/><br/>', '<br/><br/>')
         content = (temp + '<br/><br/>' + content).encode('utf8')
         soup = BeautifulSoup(content, features='lxml')
         tags = soup.find_all(self.tag_del)
