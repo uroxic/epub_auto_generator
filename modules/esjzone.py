@@ -93,7 +93,7 @@ class fetcher(object):
         html = etree.fromstring(result, parser=parser)
         description = []
         for i in html.xpath("/html/body/div[3]/section/div/div[1]/div[2]/div/div/div/p"):
-            description.append(i.text)
+            description.append(str(i.text))
             description.append('\n')
         detail = {}
         detail['name'] = html.xpath(
