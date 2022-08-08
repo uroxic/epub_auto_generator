@@ -1,4 +1,5 @@
 import asyncio
+import html
 import json
 import os
 import re
@@ -59,7 +60,7 @@ class fetcher(object):
         detail['name'] = html.xpath(
             "/html/body/div[5]/div/div/div[1]/table[1]/tr[1]/td/table/tr/td[1]/span/b")[0].text
         detail['intro'] = "<br/>".join(html.xpath(
-            "/html/body/div[5]/div/div/div[1]/table[2]/tr/td[2]/span[6]/text()")).replace(u'\u3000', u' ').replace('\r', '\n')
+            "/html/body/div[5]/div/div/div[1]/table[2]/tr/td[2]/span[6]/text()")).replace(u'\u3000', u' ').replace('\r', '\n').replace('\n', '')
         detail['author'] = html.xpath(
             "/html/body/div[5]/div/div/div[1]/table[1]/tr[2]/td[2]")[0].text[5:]
         detail['novel_id'] = int(novel_id)
@@ -79,22 +80,21 @@ class fetcher(object):
         while(1):
             try:
                 temp.remove('\xa0')
-            except Exception as e:
-                print(e)
+            except:
                 break
         volume = []
         temp1 = {}
-        for i in temp:
-            if (i.get('class') == 'vcss'):
+        for i in range(len(temp)):
+            if (temp[i].get('class') == 'vcss' and (i+1) != len(temp) and temp[i+1].tag == 'a'):
                 if (len(temp1) != 0):
                     volume.append(temp1)
                     temp1 = {}
-                temp1['name'] = i.text
-                temp1['volume_id'] = i.get('vid')
+                temp1['name'] = temp[i].text
+                temp1['volume_id'] = temp[i].get('vid')
                 temp1['chapter'] = []
-            else:
+            elif (temp[i].tag == 'a'):
                 temp1['chapter'].append(
-                    {"name": i.text, "chapter_id": int(i.get('href')[:-4])})
+                    {"name": temp[i].text, "chapter_id": int(temp[i].get('href')[:-4])})
         if (len(temp1) != 0):
             volume.append(temp1)
 
@@ -104,13 +104,15 @@ class fetcher(object):
     async def get_content(self, novel_id, volume_id, chapter_id):
         async with aiohttp.ClientSession(headers=self.header) as session:
             async with session.get(self.content_api + str(int(novel_id) // 1000) + '/' + str(novel_id) + '/' + str(chapter_id) + ".htm", proxy=self.proxy) as response:
-                result = zhconv.convert((await response.content.read()).decode('gbk'), 'zh-cn')
+                result = zhconv.convert((await response.content.read()).decode('gbk'), 'zh-cn').replace('壹', '一').replace('贰', '二').replace('叁', '三')
         soup = BeautifulSoup(result, features='lxml')
         content = soup.find_all(name='div', id='content')
         temp = soup.find_all(name='div', id='title')[0].text
         temp = "<h2>" + temp + "</h2>"
-        content = "".join(
-            list(map(str, content[0].contents[2:-2]))).replace('\r', '\n').replace('\n', '')
+        content = (html.unescape("".join(
+            list(map(str, content[0].contents[2:-2]))))).replace('\r', '\n').replace('\n', '')
+        while(content.find('<br>') != -1):
+            content = content.replace('<br>', '<br/>')
         while(content.find('<br/><br/><br/>') != -1):
             content = content.replace('<br/><br/><br/>', '<br/><br/>')
         content = (temp + '<br/><br/>' + content).encode('utf8')
@@ -121,7 +123,7 @@ class fetcher(object):
                 del(i['width'])
                 del(i['height'])
                 del(i['style'])
-            content = soup.prettify("utf-8")
+        content = soup.prettify("utf-8")
 
         return content
 

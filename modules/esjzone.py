@@ -1,4 +1,5 @@
 import asyncio
+import html
 import json
 import os
 import re
@@ -98,7 +99,7 @@ class fetcher(object):
         detail['name'] = html.xpath(
             "/html/body/div[3]/section/div/div[1]/div[1]/div[2]/h2")[0].text.replace(u'\u3000', u' ')
         detail['intro'] = "<br/>".join(description).replace(
-            u'\u3000', u' ').replace('\r', '\n')
+            u'\u3000', u' ').replace('\r', '\n').replace('\n', '')
         detail['author'] = html.xpath(
             "/html/body/div[3]/section/div/div[1]/div[1]/div[2]/ul/li[2]/a")[0].text.replace(u'\u3000', u' ')
         detail['novel_id'] = int(novel_id)
@@ -121,18 +122,18 @@ class fetcher(object):
         volume = []
         temp1 = {}
         count = 0
-        for i in temp:
-            if (i.tag == 'p'):
+        for i in range(len(temp)):
+            if (temp[i].tag == 'p' and (i+1) != len(temp) and temp[i+1].tag == 'a'):
                 if (len(temp1) != 0):
                     volume.append(temp1)
                     temp1 = {}
-                temp1['name'] = i.text
+                temp1['name'] = temp[i].text
                 temp1['volume_id'] = count
                 count += 1
                 temp1['chapter'] = []
-            else:
+            elif (temp[i].tag == 'a'):
                 temp1['chapter'].append(
-                    {"name": i.get('data-title'), "chapter_id": int((urllib.parse.urlparse(i.get('href')).path).split('/')[-1][:-5])})
+                    {"name": temp[i].get('data-title'), "chapter_id": int((urllib.parse.urlparse(temp[i].get('href')).path).split('/')[-1][:-5])})
         if (len(temp1) != 0):
             volume.append(temp1)
 
@@ -144,13 +145,15 @@ class fetcher(object):
             await self.login()
         async with aiohttp.ClientSession(headers=self.header) as session:
             async with session.get(self.content_api + str(novel_id) + '/' + str(chapter_id) + ".html", cookies=self.cookie, proxy=self.proxy) as response:
-                result = zhconv.convert((await response.content.read()).decode('utf8'), 'zh-cn')
+                result = zhconv.convert((await response.content.read()).decode('utf8'), 'zh-cn').replace('壹', '一').replace('贰', '二').replace('叁', '三')
         soup = BeautifulSoup(result, features='lxml')
         content = soup.find_all(name='div', class_='forum-content mt-3')
         temp = soup.find_all(name='h2')[0].text
         temp = "<h2>" + temp + "</h2>"
-        content = "<br/>".join(
-            list(map(str, content[0].contents))).replace('<p>', '').replace('</p>', '').replace('\r', '\n').replace('\n', '')
+        content = (html.unescape("<br/>".join(
+            list(map(str, content[0].contents))))).replace('<p>', '').replace('</p>', '').replace('\r', '\n').replace('\n', '')
+        while(content.find('<br>') != -1):
+            content = content.replace('<br>', '<br/>')
         while(content.find('<br/><br/><br/>') != -1):
             content = content.replace('<br/><br/><br/>', '<br/><br/>')
         content = (temp + content).encode('utf8')
@@ -161,7 +164,7 @@ class fetcher(object):
                 del(i['width'])
                 del(i['height'])
                 del(i['style'])
-            content = soup.prettify("utf-8")
+        content = soup.prettify("utf-8")
 
         return content
 

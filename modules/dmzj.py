@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import hashlib
+import html
 import json
 import os
 import re
@@ -133,7 +134,13 @@ class fetcher(object):
 
         async with aiohttp.ClientSession(headers=self.header) as session:
             async with session.get(url, proxy=self.proxy) as response:
-                content = await response.content.read()
+                content = zhconv.convert((await response.content.read()).decode('utf8'), 'zh-cn').replace('壹', '一').replace('贰', '二').replace('叁', '三')
+        content = (html.unescape(content)).replace(
+            '\r', '\n').replace('\n', '')
+        while(content.find('<br>') != -1):
+            content = content.replace('<br>', '<br/>')
+        while(content.find('<br/><br/><br/>') != -1):
+            content = content.replace('<br/><br/><br/>', '<br/><br/>')
         soup = BeautifulSoup(content, features='lxml')
         tags = soup.find_all(self.tag_del)
         if(len(tags) != 0):
@@ -141,7 +148,7 @@ class fetcher(object):
                 del(i['width'])
                 del(i['height'])
                 del(i['style'])
-            content = soup.prettify("utf-8")
+        content = soup.prettify("utf-8")
 
         return content
 
