@@ -57,8 +57,8 @@ class fetcher(object):
         parser = etree.HTMLParser(encoding='utf-8')
         html = etree.fromstring(result, parser=parser)
         detail = {}
-        detail['name'] = html.xpath(
-            "/html/body/div[5]/div/div/div[1]/table[1]/tr[1]/td/table/tr/td[1]/span/b")[0].text
+        detail['name'] = str(html.xpath(
+            "/html/body/div[5]/div/div/div[1]/table[1]/tr[1]/td/table/tr/td[1]/span/b")[0].text)
         detail['intro'] = "<br/>".join(html.xpath(
             "/html/body/div[5]/div/div/div[1]/table[2]/tr/td[2]/span[6]/text()")).replace(u'\u3000', u' ').replace('\r', '\n').replace('\n', '')
         detail['author'] = html.xpath(
@@ -89,7 +89,7 @@ class fetcher(object):
                 if (len(temp1) != 0):
                     volume.append(temp1)
                     temp1 = {}
-                temp1['name'] = temp[i].text
+                temp1['name'] = str(temp[i].text)
                 temp1['volume_id'] = temp[i].get('vid')
                 temp1['chapter'] = []
             elif (temp[i].tag == 'a'):
@@ -179,11 +179,12 @@ class fetcher(object):
                 self.background_tasks.add(task)
                 task.add_done_callback(self.background_tasks.discard)
             for i in volume:
-                volume_dir = novel_dir + '/' + self.correct_dir(i['name'])
+                volume_dir = novel_dir + '/' + \
+                    self.correct_dir(str(i['volume_id']) + i['name'])
                 self.check_dir(volume_dir)
                 for j in i['chapter']:
                     chapter_dir = volume_dir + '/' + \
-                        self.correct_dir(j['name'])
+                        self.correct_dir(str(j['chapter_id']) + j['name'])
                     self.check_dir(chapter_dir)
                     if((lazy == False) or ((await self.content_lost(chapter_dir)) == True)):
                         content = await self.get_content(

@@ -86,7 +86,7 @@ class fetcher(object):
         detail = self.pb_to_json(detail)
         temp = (json.loads(detail))['Data']
         detail = {}
-        detail['name'] = temp['Name']
+        detail['name'] = str(temp['Name'])
         detail['intro'] = temp['Introduction']
         detail['author'] = temp['Authors']
         detail['novel_id'] = temp['NovelId']
@@ -107,7 +107,7 @@ class fetcher(object):
         chapter = []
         for i in temp:
             temp0 = {}
-            temp0['name'] = i['VolumeName']
+            temp0['name'] = str(i['VolumeName'])
             temp0['volume_id'] = i['VolumeId']
             temp0['chapter'] = []
             for j in i['Chapters']:
@@ -200,11 +200,12 @@ class fetcher(object):
                 self.background_tasks.add(task)
                 task.add_done_callback(self.background_tasks.discard)
             for i in volume:
-                volume_dir = novel_dir + '/' + self.correct_dir(i['name'])
+                volume_dir = novel_dir + '/' + \
+                    self.correct_dir(str(i['volume_id']) + i['name'])
                 self.check_dir(volume_dir)
                 for j in i['chapter']:
                     chapter_dir = volume_dir + '/' + \
-                        self.correct_dir(j['name'])
+                        self.correct_dir(str(j['chapter_id']) + j['name'])
                     self.check_dir(chapter_dir)
                     if((lazy == False) or ((await self.content_lost(chapter_dir)) == True)):
                         content = await self.get_content(

@@ -73,7 +73,7 @@ def make_epub(module, novel_id, t):
                 count += 1
                 c = epub.EpubHtml(
                     title=j['name'], file_name=str(count)+'.xhtml')
-                text = open(book_dir + '/' + correct_dir(i['name']) + '/' + correct_dir(j['name']) +
+                text = open(book_dir + '/' + correct_dir(str(i['volume_id']) + i['name']) + '/' + correct_dir(str(j['chapter_id']) + j['name']) +
                             '/' + 'text.htm', 'rb').read().decode('utf8')
 
                 soup = BeautifulSoup(text, features='lxml')
@@ -84,7 +84,7 @@ def make_epub(module, novel_id, t):
                             suffix = '.' + (str(k['src']).split('.'))[-1]
                             img_name = 'img' + str(img_id)
                             img_cont = open(
-                                book_dir + '/' + correct_dir(i['name']) + '/' + correct_dir(j['name']) + '/' + str(k['src']), 'rb').read()
+                                book_dir + '/' + correct_dir(str(i['volume_id']) + i['name']) + '/' + correct_dir(str(j['chapter_id']) + j['name']) + '/' + str(k['src']), 'rb').read()
                             eimg = epub.EpubItem(
                                 uid=img_name, file_name=(img_name + suffix), media_type='image/jpg', content=img_cont)
                             book.add_item(eimg)

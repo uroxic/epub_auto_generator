@@ -25,17 +25,17 @@ class fetcher(object):
         self.password = ""
         self.background_tasks = set()
 
-        # https://www.esjzone.cc/detail/{novel_id}.html
-        self.detail_api = "https://www.esjzone.cc/detail/"
+        # https://www.esjzone.net/detail/{novel_id}.html
+        self.detail_api = "https://www.esjzone.net/detail/"
 
-        # https://www.esjzone.cc/detail/{novel_id}.html
-        self.chapter_api = "https://www.esjzone.cc/detail/"
+        # https://www.esjzone.net/detail/{novel_id}.html
+        self.chapter_api = "https://www.esjzone.net/detail/"
 
-        # https://www.esjzone.cc/forum/{novel_id}/{chapter_id}.html
-        self.content_api = "https://www.esjzone.cc/forum/"
+        # https://www.esjzone.net/forum/{novel_id}/{chapter_id}.html
+        self.content_api = "https://www.esjzone.net/forum/"
 
-        # https://www.esjzone.cc/inc/mem_login.php
-        self.login_api = "https://www.esjzone.cc/inc/mem_login.php"
+        # https://www.esjzone.net/inc/mem_login.php
+        self.login_api = "https://www.esjzone.net/inc/mem_login.php"
 
     @retry(stop_max_attempt_number=3, wait_random_min=200, wait_random_max=600)
     async def download_img(self, url, dir):
@@ -64,7 +64,7 @@ class fetcher(object):
         login_header = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36',
                         'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
                         'Content-Length': str(len(payload)),
-                        'Host': 'www.esjzone.cc'}
+                        'Host': 'www.esjzone.net'}
         async with aiohttp.ClientSession(headers=login_header) as session:
             async with session.post(self.login_api, data=payload, proxy=self.proxy) as response:
                 for i in session.cookie_jar:
@@ -75,7 +75,7 @@ class fetcher(object):
     @retry(stop_max_attempt_number=3, wait_random_min=200, wait_random_max=600)
     async def check_login(self):
         async with aiohttp.ClientSession(headers=self.header) as session:
-            async with session.get("https://www.esjzone.cc/my/profile", cookies=self.cookie, proxy=self.proxy) as response:
+            async with session.get("https://www.esjzone.net/my/profile", cookies=self.cookie, proxy=self.proxy) as response:
                 result = (await response.content.read()).decode('utf8')
                 if (result.find("ESJ Zone") != -1):
                     return True
@@ -96,8 +96,8 @@ class fetcher(object):
             description.append(str(i.text))
             description.append('\n')
         detail = {}
-        detail['name'] = html.xpath(
-            "/html/body/div[3]/section/div/div[1]/div[1]/div[2]/h2")[0].text.replace(u'\u3000', u' ')
+        detail['name'] = str(html.xpath(
+            "/html/body/div[3]/section/div/div[1]/div[1]/div[2]/h2")[0].text).replace(u'\u3000', u' ')
         detail['intro'] = "<br/>".join(description).replace(
             u'\u3000', u' ').replace('\r', '\n').replace('\n', '')
         detail['author'] = html.xpath(
@@ -119,23 +119,48 @@ class fetcher(object):
         html = etree.fromstring(result, parser=parser)
         temp = html.xpath(
             "//div[@id='chapterList']//p[@class='non'] | //div[@id='chapterList']//a[@target='_blank']")
-        volume = []
+        volume = [{'name': 'extra', 'volume_id': 0, 'chapter': []}]
         temp1 = {}
-        count = 0
+        vid = 1
+        cid = 0
         for i in range(len(temp)):
             if (temp[i].tag == 'p' and (i+1) != len(temp) and temp[i+1].tag == 'a'):
                 if (len(temp1) != 0):
                     volume.append(temp1)
                     temp1 = {}
-                temp1['name'] = temp[i].text
-                temp1['volume_id'] = count
-                count += 1
+                temp1['name'] = str(temp[i].text)
+                temp1['volume_id'] = vid
+                vid += 1
                 temp1['chapter'] = []
             elif (temp[i].tag == 'a'):
-                temp1['chapter'].append(
-                    {"name": temp[i].get('data-title'), "chapter_id": int((urllib.parse.urlparse(temp[i].get('href')).path).split('/')[-1][:-5])})
+                if ((temp[i].get('href')).find('esjzone') != -1):
+                    try:
+                        temp1['chapter'].append(
+                            {"name": str(temp[i].get('data-title')), "chapter_id": int((urllib.parse.urlparse(temp[i].get('href')).path).split('/')[-1][:-5])})
+                    except:
+                        volume[0]['chapter'].append(
+                            {"name": str(temp[i].get('data-title')), "chapter_id": int((urllib.parse.urlparse(temp[i].get('href')).path).split('/')[-1][:-5])})
+                else:
+                    try:
+                        text = '<a href = "' + \
+                            (temp[i].get('href')) + '"> ' + \
+                            (temp[i].get('href')) + ' </a>'
+                        temp1['chapter'].append(
+                            {"name": str(temp[i].get('data-title')), "chapter_id": cid, "text": text})
+                        cid += 1
+                    except:
+                        text = '<a href = "' + \
+                            (temp[i].get('href')) + '"> ' + \
+                            (temp[i].get('href')) + ' </a>'
+                        volume[0]['chapter'].append(
+                            {"name": str(temp[i].get('data-title')), "chapter_id": cid, "text": text})
+                        cid += 1
+
         if (len(temp1) != 0):
             volume.append(temp1)
+
+        if (len(volume[0]['chapter']) == 0):
+            del(volume[0])
 
         return volume
 
@@ -218,16 +243,21 @@ class fetcher(object):
                 self.background_tasks.add(task)
                 task.add_done_callback(self.background_tasks.discard)
             for i in volume:
-                volume_dir = novel_dir + '/' + self.correct_dir(i['name'])
+                volume_dir = novel_dir + '/' + \
+                    self.correct_dir(str(i['volume_id']) + i['name'])
                 self.check_dir(volume_dir)
                 for j in i['chapter']:
                     chapter_dir = volume_dir + '/' + \
-                        self.correct_dir(j['name'])
+                        self.correct_dir(str(j['chapter_id']) + j['name'])
                     self.check_dir(chapter_dir)
                     if((lazy == False) or ((await self.content_lost(chapter_dir)) == True)):
-                        content = await self.get_content(
-                            info['novel_id'], i['volume_id'], j['chapter_id'])
-                        content = self.localize_content(content, chapter_dir)
+                        if ("text" not in j.keys()):
+                            content = await self.get_content(
+                                info['novel_id'], i['volume_id'], j['chapter_id'])
+                            content = self.localize_content(
+                                content, chapter_dir)
+                        else:
+                            content = j['text'].encode('utf8')
                         async with aiofiles.open(chapter_dir + '/' + 'text.htm', 'wb') as afp:
                             await afp.write(content)
             async with aiofiles.open(novel_dir + '/' + 'info.json', 'wb') as afp:
