@@ -206,13 +206,16 @@ class fetcher(object):
                 await afp.write(json_string)
             try:
                 await asyncio.wait(self.background_tasks)
-            except Exception as e:
-                print(e)
+            except:
                 pass
             t.send({'action': 'finish', 'id': novel_id,
                    'module': 'dmzj', 'state': 3})
         except Exception as e:
             print(e)
+            try:
+                await asyncio.wait(self.background_tasks)
+            except:
+                pass
             t.send({'action': 'finish', 'id': novel_id,
                    'module': 'dmzj', 'state': 1})
             return
