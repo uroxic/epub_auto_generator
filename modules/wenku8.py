@@ -151,6 +151,22 @@ class fetcher(object):
             content = soup.prettify("utf-8")
         return content
 
+    async def content_lost(self, chapter_dir):
+        try:
+            if (os.path.exists(chapter_dir + '/' + 'text.htm') == False):
+                return True
+            async with aiofiles.open(chapter_dir + '/' + 'text.htm', 'rb') as afp:
+                content = (await afp.read()).decode('utf8')
+                soup = BeautifulSoup(content, features='lxml')
+                imgs = soup.find_all('img')
+                if(len(imgs) != 0):
+                    for i in imgs:
+                        if (os.path.exists(chapter_dir + '/' + str(i['src'])) == False):
+                            return True
+                return False
+        except:
+            return True
+
     async def get_novel(self, novel_id, t, lazy=True):
         try:
             info = await self.get_detail(novel_id)
@@ -169,7 +185,7 @@ class fetcher(object):
                     chapter_dir = volume_dir + '/' + \
                         self.correct_dir(j['name'])
                     self.check_dir(chapter_dir)
-                    if((lazy == False) or (os.path.exists(chapter_dir + '/' + 'text.htm') == False)):
+                    if((lazy == False) or ((await self.content_lost(chapter_dir)) == True)):
                         content = await self.get_content(
                             info['novel_id'], i['volume_id'], j['chapter_id'])
                         content = self.localize_content(content, chapter_dir)
