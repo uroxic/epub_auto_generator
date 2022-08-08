@@ -64,6 +64,7 @@ def make_epub(module, novel_id, t):
 
         book.toc = [c0, 'nav']  # epub.Section('title')
         count = 0
+        img_id = 0
 
         for i in volume:
             temp = []
@@ -74,25 +75,28 @@ def make_epub(module, novel_id, t):
                     title=j['name'], file_name=str(count)+'.xhtml')
                 text = open(book_dir + '/' + correct_dir(i['name']) + '/' + correct_dir(j['name']) +
                             '/' + 'text.htm', 'rb').read().decode('utf8')
-                c.content = text
-                book.add_item(c)
 
                 soup = BeautifulSoup(text, features='lxml')
                 imgs = soup.find_all('img')
                 if(len(imgs) != 0):
                     for k in imgs:
                         try:
-                            url = str(k['src'])
-                            img_name = list(url.split('/'))[-1]
-                            img_name = img_name[:-4]
+                            suffix = '.' + (str(k['src']).split('.'))[-1]
+                            img_name = 'img' + str(img_id)
                             img_cont = open(
-                                book_dir + '/' + correct_dir(i['name']) + '/' + correct_dir(j['name']) + '/' + url, 'rb').read()
+                                book_dir + '/' + correct_dir(i['name']) + '/' + correct_dir(j['name']) + '/' + str(k['src']), 'rb').read()
                             eimg = epub.EpubItem(
-                                uid=img_name, file_name=url, media_type='image/jpg', content=img_cont)
+                                uid=img_name, file_name=(img_name + suffix), media_type='image/jpg', content=img_cont)
                             book.add_item(eimg)
+                            k['src'] = (img_name + suffix)
+                            img_id += 1
                         except Exception as e:
                             print(e)
                             pass
+
+                c.content = soup.prettify()
+                book.add_item(c)
+
                 temp.append(c)
                 book.spine.append(c)
             book.toc.append([epub.Section(i['name'], href=href_link), temp])

@@ -132,7 +132,7 @@ class fetcher(object):
         imgs = soup.find_all(name='div', class_='divimage')
         if(len(imgs) != 0):
             for i in imgs:
-                i.replace_with(i.contents[0].contents[0])
+                i.replace_with(i.contents[1].contents[1])
         imgs = soup.find_all('img')
         if(len(imgs) != 0):
             for i in imgs:
