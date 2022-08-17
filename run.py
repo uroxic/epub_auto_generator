@@ -14,6 +14,7 @@ modules = ['dmzj', 'esjzone', 'wenku8']
 def run_server(pipe_dict, epub_pipe):
     server.pipe_dict = pipe_dict
     server.epub_pipe = epub_pipe
+    server.app.config.KEEP_ALIVE_TIMEOUT = 600
     server.app.run(host="0.0.0.0", port=8000, access_log=False)
 
 
