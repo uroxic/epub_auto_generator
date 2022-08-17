@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import html
 import json
 import os
@@ -21,14 +22,8 @@ class fetcher(object):
                         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36')]
         self.background_tasks = set()
 
-        # https://www.wenku8.net/book/{novel_id}.htm
-        self.detail_api = "https://www.wenku8.net/book/"
-
-        # https://www.wenku8.net/novel/{novel_id // 1000}/{novel_id}/index.htm
-        self.chapter_api = "https://www.wenku8.net/novel/"
-
-        # https://www.wenku8.net/novel/{novel_id // 1000}/{novel_id}/{chapter_id}.htm
-        self.content_api = "https://www.wenku8.net/novel/"
+        # http://app.wenku8.com/android.php
+        self.api = "http://app.wenku8.com/android.php"
 
     @retry(stop_max_attempt_number=3, wait_random_min=200, wait_random_max=600)
     async def download_img(self, url, dir):
@@ -51,50 +46,67 @@ class fetcher(object):
 
     @retry(stop_max_attempt_number=3, wait_random_min=200, wait_random_max=600)
     async def get_detail(self, novel_id):
-        async with aiohttp.ClientSession(headers=self.header) as session:
-            async with session.get(self.detail_api + str(novel_id) + ".htm", proxy=self.proxy) as response:
-                result = zhconv.convert((await response.content.read()).decode('gbk'), 'zh-cn')
-        parser = etree.HTMLParser(encoding='utf-8')
-        html = etree.fromstring(result, parser=parser)
+        temp_header = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36',
+                       'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                       'Content-Length': None,
+                       'Host': 'app.wenku8.com'}
+        req = "action=book&do=info&aid=" + str(novel_id) + "&t=0"
+        req = str(base64.b64encode(req.encode('utf8')), 'utf8')
+        payload = "request=" + req
+        temp_header["Content-Length"] = str(len(payload))
+        async with aiohttp.ClientSession(headers=temp_header) as session:
+            async with session.post(self.api, data=payload, proxy=self.proxy) as response:
+                result = zhconv.convert((await response.content.read()).decode('utf8'), 'zh-cn')
+        req = "action=book&do=intro&aid=" + str(novel_id) + "&t=0"
+        req = str(base64.b64encode(req.encode('utf8')), 'utf8')
+        payload = "request=" + req
+        temp_header["Content-Length"] = str(len(payload))
+        async with aiohttp.ClientSession(headers=temp_header) as session:
+            async with session.post(self.api, data=payload, proxy=self.proxy) as response:
+                intro = zhconv.convert((await response.content.read()).decode('utf8'), 'zh-cn')
+        soup = BeautifulSoup(result, features='xml')
         detail = {}
-        detail['name'] = str(html.xpath(
-            "/html/body/div[5]/div/div/div[1]/table[1]/tr[1]/td/table/tr/td[1]/span/b")[0].text)
-        detail['intro'] = "<br/>".join(html.xpath(
-            "/html/body/div[5]/div/div/div[1]/table[2]/tr/td[2]/span[6]/text()")).replace(u'\u3000', u' ').replace('\r', '\n').replace('\n', '')
-        detail['author'] = html.xpath(
-            "/html/body/div[5]/div/div/div[1]/table[1]/tr[2]/td[2]")[0].text[5:]
+        detail['name'] = str(soup.find(name='data', attrs={
+                             'name': 'Title'}).contents[0])
+        detail['intro'] = str(intro).replace('\r', '\n').replace('\n', '<br/>')
+        detail['author'] = str(
+            soup.find(name='data', attrs={'name': 'Author'})['value'])
         detail['novel_id'] = int(novel_id)
-        detail['cover'] = html.xpath(
-            "/html/body/div[5]/div/div/div[1]/table[2]/tr/td[1]/img")[0].get('src')
+        detail['cover'] = "http://img.wenku8.com/image/" + \
+            str(int(novel_id) // 1000) + "/" + str(novel_id) + \
+            "/" + str(novel_id) + "s.jpg"
 
         return detail
 
     @retry(stop_max_attempt_number=3, wait_random_min=200, wait_random_max=600)
     async def get_chapter(self, novel_id):
-        async with aiohttp.ClientSession(headers=self.header) as session:
-            async with session.get(self.chapter_api + str(int(novel_id) // 1000) + '/' + str(novel_id) + "/index.htm", proxy=self.proxy) as response:
-                result = zhconv.convert((await response.content.read()).decode('gbk'), 'zh-cn')
-        parser = etree.HTMLParser(encoding='utf-8')
-        html = etree.fromstring(result, parser=parser)
-        temp = html.xpath("//td[@class='vcss'] | //td[@class='ccss']/node()")
-        while(1):
-            try:
-                temp.remove('\xa0')
-            except:
-                break
+        temp_header = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36',
+                       'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                       'Content-Length': None,
+                       'Host': 'app.wenku8.com'}
+        req = "action=book&do=list&aid=" + str(novel_id) + "&t=0"
+        req = str(base64.b64encode(req.encode('utf8')), 'utf8')
+        payload = "request=" + req
+        temp_header["Content-Length"] = str(len(payload))
+        async with aiohttp.ClientSession(headers=temp_header) as session:
+            async with session.post(self.api, data=payload, proxy=self.proxy) as response:
+                result = zhconv.convert((await response.content.read()).decode('utf8'), 'zh-cn')
+        soup = BeautifulSoup(result, features='xml')
+        temp = soup.find_all(name=['volume', 'chapter'])
         volume = []
         temp1 = {}
         for i in range(len(temp)):
-            if (temp[i].get('class') == 'vcss' and (i+1) != len(temp) and temp[i+1].tag == 'a'):
+            if (temp[i].name == 'volume' and (i+1) != len(temp) and temp[i+1].name == 'chapter'):
                 if (len(temp1) != 0):
                     volume.append(temp1)
                     temp1 = {}
-                temp1['name'] = str(temp[i].text)
-                temp1['volume_id'] = temp[i].get('vid')
+                temp1['name'] = str(temp[i].contents[0]).replace(
+                    '\r', '\n').replace('\n', '')
+                temp1['volume_id'] = int(temp[i]['vid'])
                 temp1['chapter'] = []
-            elif (temp[i].tag == 'a'):
+            elif (temp[i].name == 'chapter'):
                 temp1['chapter'].append(
-                    {"name": temp[i].text, "chapter_id": int(temp[i].get('href')[:-4])})
+                    {"name": str(temp[i].contents[0]).replace('\r', '\n').replace('\n', ''), "chapter_id": int(temp[i]['cid'])})
         if (len(temp1) != 0):
             volume.append(temp1)
 
@@ -102,21 +114,28 @@ class fetcher(object):
 
     @retry(stop_max_attempt_number=3, wait_random_min=200, wait_random_max=600)
     async def get_content(self, novel_id, volume_id, chapter_id):
-        async with aiohttp.ClientSession(headers=self.header) as session:
-            async with session.get(self.content_api + str(int(novel_id) // 1000) + '/' + str(novel_id) + '/' + str(chapter_id) + ".htm", proxy=self.proxy) as response:
-                result = zhconv.convert((await response.content.read()).decode('gbk'), 'zh-cn').replace('壹', '一').replace('贰', '二').replace('叁', '三')
-        soup = BeautifulSoup(result, features='lxml')
-        content = soup.find_all(name='div', id='content')
-        temp = soup.find_all(name='div', id='title')[0].text
-        temp = "<h2>" + temp + "</h2>"
-        content = (html.unescape("".join(
-            list(map(str, content[0].contents[2:-2]))))).replace('\r', '\n').replace('\n', '')
+        temp_header = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36',
+                       'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                       'Content-Length': None,
+                       'Host': 'app.wenku8.com'}
+        req = "action=book&do=text&aid=" + \
+            str(novel_id) + "&cid=" + str(chapter_id) + "&t=0"
+        req = str(base64.b64encode(req.encode('utf8')), 'utf8')
+        payload = "request=" + req
+        temp_header["Content-Length"] = str(len(payload))
+        async with aiohttp.ClientSession(headers=temp_header) as session:
+            async with session.post(self.api, data=payload, proxy=self.proxy) as response:
+                result = zhconv.convert((await response.content.read()).decode('utf8'), 'zh-cn').replace(' ', '').replace('\r', '\n').replace('\n', '<br/>').replace('壹', '一').replace('贰', '二').replace('叁', '三')
+        content = (html.unescape(result)).replace('\r', '\n').replace('\n', '')
         while(content.find('<br>') != -1):
             content = content.replace('<br>', '<br/>')
         while(content.find('<br/><br/><br/>') != -1):
             content = content.replace('<br/><br/><br/>', '<br/><br/>')
-        content = (temp + '<br/><br/>' + content).encode('utf8')
+        while(content.find('<!--image-->') != -1):
+            content = content.replace('<!--image-->', '<img src="', 1)
+            content = content.replace('<!--image-->', '">', 1)
         soup = BeautifulSoup(content, features='lxml')
+        imgs = soup.find_all("img")
         tags = soup.find_all(self.tag_del)
         if(len(tags) != 0):
             for i in tags:
